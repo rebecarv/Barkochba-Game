@@ -4,6 +4,8 @@ import { Sun, Moon } from "lucide-react";
 import { db } from "./firebase";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 
+
+
 // Firebase configuration
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -81,7 +83,7 @@ export default function BarkochbaGame() {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${darkMode ? "bg-gray-900" : "bg-gradient-to-br from-white to-purple-300"}`}>
+    <div className={`font-montserrat min-h-screen flex items-center justify-center transition-colors duration-300 ${darkMode ? "bg-gray-900" : "bg-gradient-to-br from-white to-purple-300"}`}>
       <motion.div 
         className={`game-box ${darkMode ? "bg-gray-800 text-white" : "bg-white text-black"}`}
         initial={{ opacity: 0, scale: 0.8 }}
