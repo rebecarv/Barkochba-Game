@@ -4,8 +4,6 @@ import { Sun, Moon } from "lucide-react";
 import { db } from "./firebase";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 
-
-
 // Firebase configuration
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -95,11 +93,30 @@ export default function BarkochbaGame() {
         </button>
 
         {!isPlaying ? (
-          <div className="box-border p-20 items-center">
+          <div className="box-border p-12 flex flex-col items-center">
+            <img src="../logo.png" alt="Logo" className="h-15 object-scale-down" />
             <h1 className="text-3xl bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent font-bold text-center">Barkochba</h1>
-            <p className="mt-4 text-lg">Think of a word, and I'll try to guess it!</p>
-            <div className="">
-            <button onClick={startGame} className="button p-2 rounded-md bg-gradient-to-r from-purple-500 to-blue-500">Let's Play!</button>
+            <p className={`-mt-0 text-lg text-gray-600 mb-5 ${darkMode ? "text-neutral-400" : "text-gray-600"}`}>Think of a word, and I'll try to guess it!</p>
+            <ol className="pl-0 space-y-2">
+              <li className="flex items-center">
+            <span className={`w-7 h-7 flex items-center justify-center rounded-full bg-purple-100 text-purple-500 font-bold mr-2
+              ${darkMode ? "bg-purple-400 text-white" : "bg-purple-100 text-purple-500"}`} >1</span>
+              Think of any word and keep it in your mind.</li>
+              <li className="flex items-center">
+                <span className={`w-7 h-7 flex items-center justify-center rounded-full bg-purple-100 text-purple-500 font-bold mr-2
+              ${darkMode ? "bg-purple-400 text-white" : "bg-purple-100 text-purple-500"}`}>2</span>
+                I'll ask you yes/no questions to figure out your word.</li>
+              <li className="flex items-center">
+              <span className={`w-7 h-7 flex items-center justify-center rounded-full bg-purple-100 text-purple-500 font-bold mr-2
+              ${darkMode ? "bg-purple-400 text-white" : "bg-purple-100 text-purple-500"}`}>3</span>
+                Answer honestly by clicking the Yes or No buttons.</li>
+              <li className="flex items-center">
+              <span className={`w-7 h-7 flex items-center justify-center rounded-full bg-purple-100 text-purple-500 font-bold mr-2
+              ${darkMode ? "bg-purple-400 text-white" : "bg-purple-100 text-purple-500"}`}>4</span>
+                Let's see if I can guess your word!</li>
+            </ol>
+            <div className="flex flex-col items-center mt-5">
+            <button onClick={startGame} className="button p-2 rounded-md bg-gradient-to-r from-purple-500 to-blue-500 shadow-[rgba(0, 0, 0, 0.15) 1.95px 1.95px 2.6px]">Let's Play!</button>
             </div>
           </div>
         ) : gameOver ? (
