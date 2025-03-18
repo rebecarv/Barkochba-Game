@@ -85,7 +85,7 @@ export default function BarkochbaGame() {
   return (
     <div className={`font-montserrat min-h-screen flex items-center justify-center transition-colors duration-300 ${darkMode ? "bg-gray-900" : "bg-gradient-to-br from-white to-purple-300"}`}>
       <motion.div 
-        className={`game-box ${darkMode ? "bg-gray-800 text-white" : "bg-white text-black"}`}
+        className={`game-box rounded-xl shadow-md shadow-black/25 ${darkMode ? "bg-gray-800 text-white" : "bg-white text-black"}`}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
@@ -95,10 +95,12 @@ export default function BarkochbaGame() {
         </button>
 
         {!isPlaying ? (
-          <div>
-            <h1 className="text-3xl font-bold">🌟 Barkochba Game 🌟</h1>
+          <div className="box-border p-20 items-center">
+            <h1 className="text-3xl bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent font-bold text-center">Barkochba</h1>
             <p className="mt-4 text-lg">Think of a word, and I'll try to guess it!</p>
-            <button onClick={startGame} className="button bg-gradient-to-r from-purple-500 to-blue-500">Let's Play!</button>
+            <div className="">
+            <button onClick={startGame} className="button p-2 rounded-md bg-gradient-to-r from-purple-500 to-blue-500">Let's Play!</button>
+            </div>
           </div>
         ) : gameOver ? (
           <div>
