@@ -1,87 +1,101 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sun, Moon } from "lucide-react";
-import { db } from "./firebase";
-import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+const generationConfig = {
+  temperature: 1,
+  topP: 0.95,
+  topK: 64,
+  maxOutputTokens: 4096,
 };
+
+let chatSession = null;
+
 
 export default function BarkochbaGame() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [question, setQuestion] = useState("Think of a word and I'll guess it!");
+  const [question, setQuestion] = useState("Loading...");
   const [questionNumber, setQuestionNumber] = useState(1);
-  const [progress, setProgress] = useState("🟢 Start");
   const [answers, setAnswers] = useState([]);
   const [aiGuess, setAiGuess] = useState(null);
   const [gameOver, setGameOver] = useState(false);
-
   const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
+
   const toggleDarkMode = () => setDarkMode(!darkMode);
-  const startGame = () => {
+
+  const startChatSession = async () => {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+  
+    chatSession = model.startChat({
+      generationConfig,
+      history: [
+        {
+          role: "user",
+          parts: [{ text: "You're playing the Barkochba word guessing game. Ask Yes/No questions to figure out what word I'm thinking of." }],
+        },
+        {
+          role: "model",
+          parts: [{ text: "Okay! I'm ready to begin. Let's start!" }],
+        },
+      ],
+    });
+  
+    const result = await chatSession.sendMessage("Start the game.");
+    return result.response.text();
+  };
+  
+  const sendUserAnswer = async (answer) => {
+    if (!chatSession) {
+      throw new Error("Chat session not started");
+    }
+  
+    const result = await chatSession.sendMessage(answer);
+    return result.response.text();
+  };
+
+
+  const startGame = async () => {
     setIsPlaying(true);
-    setQuestion("Think of a word and I'll guess it!");
-    setQuestionNumber(1);
-    setProgress("🟢 Start");
     setAnswers([]);
     setAiGuess(null);
     setGameOver(false);
-  };
-
-  const fetchGeminiResponse = async (prompt) => {
-    const response = await fetch("https://gemini.googleapis.com/v1/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${GEMINI_API_KEY}`,
-      },
-      body: JSON.stringify({ prompt, max_tokens: 50 }),
-    });
-    const data = await response.json();
-    return data.text;
+    setQuestionNumber(1);
+    setQuestion("Loading...");
+    const firstQuestion = await startChatSession();
+    setQuestion(firstQuestion);
   };
 
   const handleAnswer = async (answer) => {
     const newAnswers = [...answers, { question, answer }];
     setAnswers(newAnswers);
     setQuestionNumber((prev) => prev + 1);
-    setProgress(questionNumber >= 5 ? "🤖 Guessing" : "🔴 Focusing");
-
-    const prompt = `I am playing a guessing game. Based on these answers: ${JSON.stringify(newAnswers)}, what should my next Yes/No question be? If enough information is available, guess the word.`;
-    const response = await fetchGeminiResponse(prompt);
-
-    if (response.toLowerCase().includes("i guess")) {
-      setGuessedWord(response.replace("I guess your word is", "").trim());
+  
+    const response = await sendUserAnswer(answer);
+  
+    const match = response.match(/I guess your word is (.+)/i);
+    if (match) {
+      const guessed = match[1].trim().replace(/[.?!]/, "");
+      setAiGuess(guessed);
+      setGameOver(true);
     } else {
-      setQuestion(response || "I'm not sure, can you give me more info?");
+      setQuestion(response);
     }
   };
-
-  const confirmGuess = async (correct) => {
-    if (correct) {
-      await addDoc(collection(db, "barkochba"), { word: guessedWord, questions: answers });
-      alert("Great! I've learned something new.");
-    } else {
-      const correctWord = prompt("What was your word?");
-      if (correctWord) {
-        await addDoc(collection(db, "barkochba"), { word: correctWord, questions: answers });
-        alert("Thanks! I'll learn from this.");
-      }
-    }
-    startGame();
+  
+  const restartGame = () => {
+    setIsPlaying(false);
   };
+
+
 
   return (
-    <div className={`font-montserrat min-h-screen flex items-center justify-center transition-colors duration-300 ${darkMode ? "bg-gray-900" : "bg-gradient-to-br from-white to-purple-300"}`}>
+    <div className={` min-h-screen flex items-center justify-center transition-colors duration-300 ${darkMode ? "bg-gray-900" : "bg-gradient-to-br from-white to-purple-300"}`}>
       <motion.div 
         className={`game-box rounded-xl shadow-md shadow-black/25 ${darkMode ? "bg-gray-800 text-white" : "bg-white text-black"}`}
         initial={{ opacity: 0, scale: 0.8 }}
@@ -121,24 +135,29 @@ export default function BarkochbaGame() {
           </div>
         ) : gameOver ? (
           <div>
-            <p className="text-lg font-semibold">Is your word "{aiGuess}"?</p>
+            <p className="text-lg font-semibold">Is your word "<strong>{aiGuess}</strong>"?</p>
             <div className="flex justify-center gap-4 mt-6">
-              <button onClick={() => saveWordToFirestore(aiGuess)} className="button button-yes">Yes, Save it!</button>
-              <button onClick={startGame} className="button button-no">No, Try Again</button>
+              <button onClick={restartGame} className="px-4 py-2 rounded bg-green-500 text-white">
+                Yes!
+              </button>
+              <button onClick={restartGame} className="px-4 py-2 rounded bg-red-500 text-white">
+                Nope
+              </button>
             </div>
           </div>
         ) : (
-          <div>
-            <p className="text-lg font-semibold">Question {questionNumber}</p>
-            <p className="text-xl mt-4 bg-gray-100 p-4 rounded-lg shadow">{question}</p>
-            <p className="mt-4">{progress}</p>
+          <div className="box-border p-12 flex flex-col items-center">
+            <p className="text-lg ">Question {questionNumber}</p>
+            <p className={`text-xl mt-4 bg-gray-100 p-4 rounded-lg shadow ${darkMode ? "bg-gray-900" : "bg-gray-100"}`}>{question}</p>
             <div className="flex justify-center gap-4 mt-6">
-              <button onClick={() => handleAnswer("yes")} className="button button-yes">YES</button>
-              <button onClick={() => handleAnswer("no")} className="button button-no">NO</button>
+              <button onClick={() => handleAnswer("yes")} className={`button button-yes bg-green-200 px-4 py-0.5 rounded-sm
+              ${darkMode ? "bg-green-500" : "bg-green-200"}`}>YES</button>
+              <button onClick={() => handleAnswer("no")} className={`button button-no bg-red-200 px-4 py-0.5 rounded-sm 
+              ${darkMode ? "bg-red-500" : "bg-red-200"}`}>NO</button>
             </div>
           </div>
         )}
       </motion.div>
     </div>
   );
-}
+} 
