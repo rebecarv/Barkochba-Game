@@ -75,9 +75,28 @@ export default function BarkochbaGame() {
     const newAnswers = [...answers, { question, answer }];
     setAnswers(newAnswers);
     setQuestionNumber((prev) => prev + 1);
-  
+
+    // Add a small delay (e.g. 2 seconds)
+    await new Promise((res) => setTimeout(res, 2000));
+
+    try {
+      const response = await sendUserAnswer(answer);
+      console.log("Gemini response:", response);
+      setQuestion(response);
+    } catch (error) {
+      if (error.message.includes("429")) {
+        setQuestion("I'm thinking too fast! Let's take a short break and try again in a few seconds.");
+      } else {
+        setQuestion("Something went wrong. Please try again.");
+      }
+    }
+
     const response = await sendUserAnswer(answer);
-  
+    console.log("Gemini response:", response);
+
+  // Just set whatever it replies with
+  setQuestion(response);
+
     const match = response.match(/I guess your word is (.+)/i);
     if (match) {
       const guessed = match[1].trim().replace(/[.?!]/, "");
