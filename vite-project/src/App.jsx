@@ -37,13 +37,20 @@ export default function BarkochbaGame() {
       history: [
         {
           role: "user",
-          parts: [{ text: "You're playing the Barkochba word guessing game. Ask Yes/No questions to figure out what word I'm thinking of." }],
+          parts: [{
+            text: `You're the Game Master for the Barkochba word guessing game.
+            Only ask ONE strategic Yes/No question at a time. Wait for the user's Yes/No response before asking the next.
+            Do NOT guess the word until you're 95% sure. 
+            Start with general ideas (is it alive, can I touch it, etc) before narrowing down.
+            Never ask multiple questions or follow-ups in the same message.
+            Let's begin. What's your first question?`,
+          }],
         },
         {
           role: "model",
-          parts: [{ text: "Okay! I'm ready to begin. Let's start!" }],
+          parts: [{ text: "Okay! I'm ready. Here's my first question:" }],
         },
-      ],
+      ]      
     });
   
     const result = await chatSession.sendMessage("Start the game.");
@@ -55,8 +62,13 @@ export default function BarkochbaGame() {
       throw new Error("Chat session not started");
     }
   
-    const result = await chatSession.sendMessage(answer);
-    return result.response.text();
+    const result = await chatSession.sendMessage(
+      `${answer}. Now, ask ONE next Yes/No question ONLY, and wait for my reply before continuing.`
+    );
+  
+    const text = result.response.text();
+    console.log("Gemini response:", text);
+    return text;
   };
 
 
@@ -76,13 +88,23 @@ export default function BarkochbaGame() {
     setAnswers(newAnswers);
     setQuestionNumber((prev) => prev + 1);
 
-    // Add a small delay (e.g. 2 seconds)
-    await new Promise((res) => setTimeout(res, 2000));
-
     try {
+      // Add a small delay (e.g. 2 seconds)
+      setQuestion("Thinking..."); // Show a loading message
+      await new Promise((res) => setTimeout(res, 2000));
+
       const response = await sendUserAnswer(answer);
       console.log("Gemini response:", response);
+
+      const match = response.match(/I guess your word is (.+)/i);
+    if (match) {
+      const guessed = match[1].trim().replace(/[.?!]/, "");
+      setAiGuess(guessed);
+      setGameOver(true);
+    } else {
       setQuestion(response);
+    }
+
     } catch (error) {
       if (error.message.includes("429")) {
         setQuestion("I'm thinking too fast! Let's take a short break and try again in a few seconds.");
@@ -91,7 +113,6 @@ export default function BarkochbaGame() {
       }
     }
 
-    const response = await sendUserAnswer(answer);
     console.log("Gemini response:", response);
 
   // Just set whatever it replies with
@@ -112,7 +133,6 @@ export default function BarkochbaGame() {
   };
 
 
-
   return (
     <div className={` min-h-screen flex items-center justify-center transition-colors duration-300 ${darkMode ? "bg-gray-900" : "bg-gradient-to-br from-white to-purple-300"}`}>
       <motion.div 
@@ -126,9 +146,9 @@ export default function BarkochbaGame() {
         </button>
 
         {!isPlaying ? (
-          <div className="box-border p-12 flex flex-col items-center">
+          <div className="box-border p-6 sm:p-10 md:p-12 flex flex-col items-center text-center">
             <img src="../logo.png" alt="Logo" className="h-15 object-scale-down" />
-            <h1 className="text-3xl bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent font-bold text-center">Barkochba</h1>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent font-bold text-center">Barkochba</h1>
             <p className={`-mt-0 text-lg text-gray-600 mb-5 ${darkMode ? "text-neutral-400" : "text-gray-600"}`}>Think of a word, and I'll try to guess it!</p>
             <ol className="pl-0 space-y-2">
               <li className="flex items-center">
@@ -154,7 +174,7 @@ export default function BarkochbaGame() {
           </div>
         ) : gameOver ? (
           <div>
-            <p className="text-lg font-semibold">Is your word "<strong>{aiGuess}</strong>"?</p>
+            <p className="text-lg sm:text-xl md:text-2xl font-semibold">Is your word "<strong>{aiGuess}</strong>"?</p>
             <div className="flex justify-center gap-4 mt-6">
               <button onClick={restartGame} className="px-4 py-2 rounded bg-green-500 text-white">
                 Yes!
@@ -165,9 +185,9 @@ export default function BarkochbaGame() {
             </div>
           </div>
         ) : (
-          <div className="box-border p-12 flex flex-col items-center">
-            <p className="text-lg ">Question {questionNumber}</p>
-            <p className={`text-xl mt-4 bg-gray-100 p-4 rounded-lg shadow ${darkMode ? "bg-gray-900" : "bg-gray-100"}`}>{question}</p>
+          <div className="box-border p-6 sm:p-10 md:p-12 flex flex-col items-center text-center">
+            <p className="text-lg sm:text-xl md:text-2xl ">Question {questionNumber}</p>
+            <p className={`text-xl sm:text-xl md:text-2xl mt-4 bg-gray-100 p-4 rounded-lg shadow ${darkMode ? "bg-gray-900" : "bg-gray-100"}`}>{question}</p>
             <div className="flex justify-center gap-4 mt-6">
               <button onClick={() => handleAnswer("yes")} className={`button button-yes bg-green-200 px-4 py-0.5 rounded-sm
               ${darkMode ? "bg-green-500" : "bg-green-200"}`}>YES</button>
