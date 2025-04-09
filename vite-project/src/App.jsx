@@ -95,54 +95,60 @@ export default function BarkochbaGame() {
   const [isThinking, setIsThinking] = useState(false);
   
   const handleAnswer = async (answer) => {
-    if (isThinking) return; // Prevent spam clicks
+    if (isThinking) return;
     setIsThinking(true);
-
+  
     const newAnswers = [...answers, { question, answer }];
     setAnswers(newAnswers);
     setQuestionNumber((prev) => prev + 1);
     setQuestion("Thinking...");
   
     try {
+      // 🔍 Check if the last question looks like a final guess
+      const guessPattern = /^(?:is it|is your word|i (?:guess|think) it('?s| is))\s+a[n]?\s+(.+?)\?$/i;
+      const guessMatch = question.match(guessPattern);
+  
+      if (guessMatch && answer.toLowerCase() === "yes") {
+        const guessed = guessMatch[2].trim();
+        setAiGuess(guessed);
+        setGameOver(true);
+        return; // Stop here — game is over
+      }
+  
+      // 💬 Otherwise continue normal flow
       const response = await sendUserAnswer(answer);
       console.log("Gemini response:", response);
   
-      const match = response.match(/I guess your word is (.+)/i);
-      if (match) {
-        const guessed = match[1].trim().replace(/[.?!]/, "");
+      // Check if Gemini itself guessed the word
+      const aiGuessMatch = response.match(/I guess your word is (.+)/i);
+      if (aiGuessMatch) {
+        const guessed = aiGuessMatch[1].trim().replace(/[.?!]/, "");
         setAiGuess(guessed);
         setGameOver(true);
       } else {
-        // Try to extract just the question part
+        // Clean up Gemini's response to show only the question
         let cleaned = response;
-
-        // Try to extract question from whole response
+  
         const questionMatch = cleaned.match(/(?:question\s*(?:is)?[:\-]?\s*)?(.*?)\?(\s|$)/i);
         if (questionMatch) {
           cleaned = questionMatch[1].trim() + "?";
         } else {
-          // fallback if ? isn't present — grab last sentence maybe
           const sentences = cleaned.split(/(?<=[.?!])\s+/);
           const maybeQuestion = sentences.find((s) => s.trim().endsWith("?"));
           cleaned = maybeQuestion ? maybeQuestion.trim() : response.trim();
         }
-
+  
         setQuestion(cleaned);
       }
-
     } catch (error) {
       console.error("Error sending answer:", error);
       setQuestion("Something went wrong. Please try again.");
+    } finally {
+      // ✅ Buttons stay disabled until we're really done
+      setIsThinking(false);
     }
-
-    setIsThinking(false);
-  };  
-  
-  const restartGame = () => {
-    setIsPlaying(false);
   };
-
-
+  
   return (
     <div className={` min-h-screen flex items-center justify-center transition-colors duration-300 ${darkMode ? "bg-gray-900" : "bg-gradient-to-br from-white to-purple-300"}`}>
       <motion.div 
@@ -179,17 +185,18 @@ export default function BarkochbaGame() {
                 Let's see if I can guess your word!</li>
             </ol>
             <div className="flex flex-col items-center mt-5">
-            <button onClick={startGame} className="button p-2 rounded-md bg-gradient-to-r from-purple-500 to-blue-500 shadow-[rgba(0, 0, 0, 0.15) 1.95px 1.95px 2.6px]">Let's Play!</button>
+            <button onClick={startGame} className="cursor-pointer hover:scale-110 button p-2 rounded-md bg-gradient-to-r from-purple-500 to-blue-500 shadow-[rgba(0, 0, 0, 0.15) 1.95px 1.95px 2.6px]">Let's Play!</button>
             </div>
           </div>
         ) : gameOver ? (
-          <div>
-            <p className="text-lg sm:text-xl md:text-2xl font-semibold">Is your word "<strong>{aiGuess}</strong>"?</p>
+          <div className="box-border p-6 sm:p-10 md:p-12 flex flex-col items-center text-center">
+            <h1 className="mb-5 text-lg sm:text-xl md:text-2xl font-semibold">I guess...</h1>
+            <p className="text-lg sm:text-xl md:text-2xl">Is your word "<strong>{aiGuess}</strong>"?</p>
             <div className="flex justify-center gap-4 mt-6">
-              <button onClick={restartGame} className="px-4 py-2 rounded bg-green-500 text-white">
-                Yes!
+              <button onClick={restartGame} className="cursor-pointer px-4 py-2 rounded bg-green-500 text-white">
+                YES!
               </button>
-              <button onClick={restartGame} className="px-4 py-2 rounded bg-red-500 text-white">
+              <button onClick={restartGame} className="cursor-pointer px-4 py-1.7 rounded bg-red-500 text-white">
                 Nope
               </button>
             </div>
@@ -199,10 +206,10 @@ export default function BarkochbaGame() {
             <p className="text-lg sm:text-xl md:text-2xl ">Question {questionNumber}</p>
             <p className={`text-xl sm:text-xl md:text-2xl mt-4 bg-gray-100 p-4 rounded-lg shadow ${darkMode ? "bg-gray-900" : "bg-gray-100"}`}>{question}</p>
             <div className="flex justify-center gap-4 mt-6">
-              <button disabled={isThinking} onClick={() => handleAnswer("yes")} className={`button button-yes bg-green-200 px-4 py-0.5 rounded-sm ${isThinking ? "opacity-50 cursor-not-allowed" : ""}
-              ${darkMode ? "bg-green-500" : "bg-green-200"}`}>YES</button>
-              <button disabled={isThinking} onClick={() => handleAnswer("no")} className={`button button-no bg-red-200 px-4 py-0.5 rounded-sm ${isThinking ? "opacity-50 cursor-not-allowed" : ""} 
-              ${darkMode ? "bg-red-500" : "bg-red-200"}`}>NO</button>
+              <button disabled={isThinking || question === "Loading..."} onClick={() => handleAnswer("yes")} className={` cursor-pointer button button-yes bg-green-300 px-4 py-0.5 rounded-sm ${isThinking ? "opacity-50 cursor-not-allowed" : ""}
+              ${darkMode ? "bg-green-500" : "bg-green-300"}`}>YES</button>
+              <button disabled={isThinking || question === "Loading..."} onClick={() => handleAnswer("no")} className={`cursor-pointer button button-no bg-red-300 px-4 py-0.5 rounded-sm ${isThinking ? "opacity-50 cursor-not-allowed" : ""} 
+              ${darkMode ? "bg-red-500" : "bg-red-300"}`}>NO</button>
             </div>
           </div>
         )}
