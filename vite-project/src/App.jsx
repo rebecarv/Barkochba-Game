@@ -26,11 +26,10 @@ export default function BarkochbaGame() {
   const [gameOver, setGameOver] = useState(false);
   const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   const startChatSession = async () => {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-thinking-exp-01-21" });
   
     chatSession = model.startChat({
       generationConfig,
@@ -39,10 +38,15 @@ export default function BarkochbaGame() {
           role: "user",
           parts: [{
             text: `You're the Game Master for the Barkochba word guessing game.
+
+            Your job is to guess the user's word using only YES/NO questions.
+            Ask ONE short question at a time — no small talk, no "Okay" or preambles.
             Only ask ONE strategic Yes/No question at a time. Wait for the user's Yes/No response before asking the next.
             Do NOT guess the word until you're 95% sure. 
             Start with general ideas (is it alive, can I touch it, etc) before narrowing down.
             Never ask multiple questions or follow-ups in the same message.
+            ONLY guess if you're 95% sure (using a question like "Is it a ___?")
+            If the user answers "Yes" to a guess, stop asking and assume you were right.
             Let's begin. What's your first question?`,
           }],
         },
@@ -67,10 +71,9 @@ export default function BarkochbaGame() {
     );
   
     const text = result.response.text();
-    console.log("Gemini response:", text);
     return text;
   };
-
+  
 
   const startGame = async () => {
     setIsPlaying(true);
@@ -79,54 +82,61 @@ export default function BarkochbaGame() {
     setGameOver(false);
     setQuestionNumber(1);
     setQuestion("Loading...");
-    const firstQuestion = await startChatSession();
-    setQuestion(firstQuestion);
+
+    try {
+      const firstQuestion = await startChatSession();
+      setQuestion(firstQuestion);
+    } catch (err) {
+      console.error("Failed to start chat:", err);
+      setQuestion("Oops! Could not start the game.");
+    }
   };
 
+  const [isThinking, setIsThinking] = useState(false);
+  
   const handleAnswer = async (answer) => {
+    if (isThinking) return; // Prevent spam clicks
+    setIsThinking(true);
+
     const newAnswers = [...answers, { question, answer }];
     setAnswers(newAnswers);
     setQuestionNumber((prev) => prev + 1);
-
+    setQuestion("Thinking...");
+  
     try {
-      // Add a small delay (e.g. 2 seconds)
-      setQuestion("Thinking..."); // Show a loading message
-      await new Promise((res) => setTimeout(res, 2000));
-
       const response = await sendUserAnswer(answer);
       console.log("Gemini response:", response);
-
+  
       const match = response.match(/I guess your word is (.+)/i);
-    if (match) {
-      const guessed = match[1].trim().replace(/[.?!]/, "");
-      setAiGuess(guessed);
-      setGameOver(true);
-    } else {
-      setQuestion(response);
-    }
+      if (match) {
+        const guessed = match[1].trim().replace(/[.?!]/, "");
+        setAiGuess(guessed);
+        setGameOver(true);
+      } else {
+        // Try to extract just the question part
+        let cleaned = response;
+
+        // Try to extract question from whole response
+        const questionMatch = cleaned.match(/(?:question\s*(?:is)?[:\-]?\s*)?(.*?)\?(\s|$)/i);
+        if (questionMatch) {
+          cleaned = questionMatch[1].trim() + "?";
+        } else {
+          // fallback if ? isn't present — grab last sentence maybe
+          const sentences = cleaned.split(/(?<=[.?!])\s+/);
+          const maybeQuestion = sentences.find((s) => s.trim().endsWith("?"));
+          cleaned = maybeQuestion ? maybeQuestion.trim() : response.trim();
+        }
+
+        setQuestion(cleaned);
+      }
 
     } catch (error) {
-      if (error.message.includes("429")) {
-        setQuestion("I'm thinking too fast! Let's take a short break and try again in a few seconds.");
-      } else {
-        setQuestion("Something went wrong. Please try again.");
-      }
+      console.error("Error sending answer:", error);
+      setQuestion("Something went wrong. Please try again.");
     }
 
-    console.log("Gemini response:", response);
-
-  // Just set whatever it replies with
-  setQuestion(response);
-
-    const match = response.match(/I guess your word is (.+)/i);
-    if (match) {
-      const guessed = match[1].trim().replace(/[.?!]/, "");
-      setAiGuess(guessed);
-      setGameOver(true);
-    } else {
-      setQuestion(response);
-    }
-  };
+    setIsThinking(false);
+  };  
   
   const restartGame = () => {
     setIsPlaying(false);
@@ -189,9 +199,9 @@ export default function BarkochbaGame() {
             <p className="text-lg sm:text-xl md:text-2xl ">Question {questionNumber}</p>
             <p className={`text-xl sm:text-xl md:text-2xl mt-4 bg-gray-100 p-4 rounded-lg shadow ${darkMode ? "bg-gray-900" : "bg-gray-100"}`}>{question}</p>
             <div className="flex justify-center gap-4 mt-6">
-              <button onClick={() => handleAnswer("yes")} className={`button button-yes bg-green-200 px-4 py-0.5 rounded-sm
+              <button disabled={isThinking} onClick={() => handleAnswer("yes")} className={`button button-yes bg-green-200 px-4 py-0.5 rounded-sm ${isThinking ? "opacity-50 cursor-not-allowed" : ""}
               ${darkMode ? "bg-green-500" : "bg-green-200"}`}>YES</button>
-              <button onClick={() => handleAnswer("no")} className={`button button-no bg-red-200 px-4 py-0.5 rounded-sm 
+              <button disabled={isThinking} onClick={() => handleAnswer("no")} className={`button button-no bg-red-200 px-4 py-0.5 rounded-sm ${isThinking ? "opacity-50 cursor-not-allowed" : ""} 
               ${darkMode ? "bg-red-500" : "bg-red-200"}`}>NO</button>
             </div>
           </div>
@@ -199,4 +209,4 @@ export default function BarkochbaGame() {
       </motion.div>
     </div>
   );
-} 
+}
