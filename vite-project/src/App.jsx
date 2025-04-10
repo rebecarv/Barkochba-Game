@@ -163,7 +163,7 @@ export default function BarkochbaGame() {
 
         {!isPlaying ? (
           <div className="box-border p-6 sm:p-10 md:p-12 flex flex-col items-center text-center">
-            <img src="../logo.png" alt="Logo" className="h-15 object-scale-down" />
+            <img src="/Barkochba-Game/logo.png" alt="Logo" className="h-15 object-scale-down" />
             <h1 className="text-3xl sm:text-4xl md:text-5xl bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent font-bold text-center">Barkochba</h1>
             <p className={`-mt-0 text-lg text-gray-600 mb-5 ${darkMode ? "text-neutral-400" : "text-gray-600"}`}>Think of a word, and I'll try to guess it!</p>
             <ol className="pl-0 space-y-2">
