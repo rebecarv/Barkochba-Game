@@ -3,6 +3,8 @@
 An interactive AI-powered guessing game where the AI tries to figure out what word you're thinking of by asking Yes/No questions. Inspired by the classic "20 Questions" game, this web app provides a fun and engaging experience using modern web technologies.
 
 ## 🚀 Live Demo
+⚠️ Note: The live demo may be temporarily unavailable due to recent changes in Google Gemini API browser usage policies.  
+The project architecture and source code remain fully functional.
 
 https://rebecarv.github.io/Barkochba-Game/
 
