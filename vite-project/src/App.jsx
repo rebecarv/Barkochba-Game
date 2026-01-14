@@ -6,6 +6,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
+
 const generationConfig = {
   temperature: 1,
   topP: 0.95,
@@ -24,12 +25,15 @@ export default function BarkochbaGame() {
   const [answers, setAnswers] = useState([]);
   const [aiGuess, setAiGuess] = useState(null);
   const [gameOver, setGameOver] = useState(false);
-  const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+  const [error, setError] = useState(null);
 
+  
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   const startChatSession = async () => {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-thinking-exp-01-21" });
+    const model = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash"
+});
   
     chatSession = model.startChat({
       generationConfig,
@@ -87,10 +91,17 @@ export default function BarkochbaGame() {
       const firstQuestion = await startChatSession();
       setQuestion(firstQuestion);
     } catch (err) {
-      console.error("Failed to start chat:", err);
-      setQuestion("Oops! Could not start the game.");
+    failGame("Could not start the game. Please try again.");
     }
   };
+
+  const failGame = (message = "Something went wrong 😕") => {
+  console.error(message);
+  setError(message);
+  setIsThinking(false);
+  setGameOver(false);
+};
+
 
   const [isThinking, setIsThinking] = useState(false);
   
@@ -140,14 +151,27 @@ export default function BarkochbaGame() {
   
         setQuestion(cleaned);
       }
-    } catch (error) {
-      console.error("Error sending answer:", error);
-      setQuestion("Something went wrong. Please try again.");
+    } catch (err) {
+      failGame("The AI stopped responding. Please restart the game.");
     } finally {
       // ✅ Buttons stay disabled until we're really done
       setIsThinking(false);
     }
+
+    const restartGame = () => {
+      setIsPlaying(false);
+      setAnswers([]);
+      setAiGuess(null);
+      setGameOver(false);
+      setQuestion("Loading...");
+      setQuestionNumber(1);
+      setError(null);
+      chatSession = null;
+    };
+
   };
+
+  
   
   return (
     <div className={` min-h-screen flex items-center justify-center transition-colors duration-300 ${darkMode ? "bg-gray-900" : "bg-gradient-to-br from-white to-purple-300"}`}>
@@ -188,7 +212,19 @@ export default function BarkochbaGame() {
             <button onClick={startGame} className="cursor-pointer hover:scale-110 button p-2 rounded-md bg-gradient-to-r from-purple-500 to-blue-500 shadow-[rgba(0, 0, 0, 0.15) 1.95px 1.95px 2.6px]">Let's Play!</button>
             </div>
           </div>
-        ) : gameOver ? (
+      ) : error ? (
+          // 🔴 ERROR SCREEN 
+          <div className="box-border p-6 sm:p-10 md:p-12 flex flex-col items-center text-center">
+            <h1 className="text-2xl font-bold text-red-500 mb-4">Oops 😬</h1>
+            <p className="text-lg mb-6">{error}</p>
+            <button
+              onClick={restartGame}
+              className="cursor-pointer px-4 py-2 rounded bg-purple-500 text-white hover:scale-105 transition"
+            >
+              Restart Game
+            </button>
+          </div>  
+      ) : gameOver ? (
           <div className="box-border p-6 sm:p-10 md:p-12 flex flex-col items-center text-center">
             <h1 className="mb-5 text-lg sm:text-xl md:text-2xl font-semibold">I guess...</h1>
             <p className="text-lg sm:text-xl md:text-2xl">Is your word "<strong>{aiGuess}</strong>"?</p>
