@@ -53,16 +53,11 @@ export default function BarkochbaGame() {
             If the user answers "Yes" to a guess, stop asking and assume you were right.
             Let's begin. What's your first question?`,
           }],
-        },
-        {
-          role: "model",
-          parts: [{ text: "Okay! I'm ready. Here's my first question:" }],
-        },
+        }
       ]      
     });
   
-    const result = await chatSession.sendMessage("Start the game.");
-    return result.response.text();
+    const result = await chatSession.sendMessage("Ask your first yes/no question.");
   };
   
   const sendUserAnswer = async (answer) => {
@@ -158,6 +153,8 @@ export default function BarkochbaGame() {
       setIsThinking(false);
     }
 
+  };
+
     const restartGame = () => {
       setIsPlaying(false);
       setAnswers([]);
@@ -168,10 +165,6 @@ export default function BarkochbaGame() {
       setError(null);
       chatSession = null;
     };
-
-  };
-
-  
   
   return (
     <div className={` min-h-screen flex items-center justify-center transition-colors duration-300 ${darkMode ? "bg-gray-900" : "bg-gradient-to-br from-white to-purple-300"}`}>
