@@ -4,7 +4,7 @@ An interactive AI-powered guessing game where the AI tries to figure out what wo
 
 ## 🚀 Live Demo
 
-[Coming Soon!]
+https://rebecarv.github.io/Barkochba-Game/
 
 ## ⚙️ Tech Stack
 
