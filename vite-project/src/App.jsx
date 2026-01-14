@@ -58,6 +58,8 @@ export default function BarkochbaGame() {
     });
   
     const result = await chatSession.sendMessage("Ask your first yes/no question.");
+    return result.response.text();
+
   };
   
   const sendUserAnswer = async (answer) => {
